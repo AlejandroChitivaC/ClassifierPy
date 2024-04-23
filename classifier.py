@@ -15,7 +15,9 @@ from sklearn.svm import SVC
 app = Flask(__name__)
 
 # Cargar el modelo entrenado
-model_path = "modelsft/classifier_modelV3_trained_CN_EN_ES.joblib"
+# model_path = "modelsft/classifier_modelV3_trained_CN_EN_ES.joblib"
+model_path = "modelsft/modelPruebaEndpointx2.joblib"
+
 model = joblib.load(model_path)
 
 # Cargar el diccionario cache desde el disco si existe, o crear uno nuevo si no existe
@@ -47,11 +49,6 @@ dt3 = pd.read_csv("datasets/datasetV2_EN.csv", sep=",")
 dt4 = pd.read_csv("datasets/datasetV2_CN.csv", sep=",", encoding="utf-8")
 dt4.rename(columns={'很危险': 'IsDangerous', '内容': 'Contents'}, inplace=True)
 
-print(dt1.head())
-print(dt2.head())
-print(dt3.head())
-print(dt4.head())
-
 merged_data = pd.concat([dt1, dt2, dt3, dt4], ignore_index=True)
 print(merged_data.head())
 # # Ordenar aleatoriamente los datos
@@ -70,15 +67,77 @@ print(merged_data_random.head())
 merged_data_random.to_csv("datasets/datasetTrainMergedDataML.csv", index=False, sep=",", encoding="utf-8")
 
 
-@app.route('/train')
-def train_and_evaluate_model(dataset_path, model_path):
-    # Log de inicio del entrenamiento
-    print(
-        f"{Fore.CYAN}[INFO]{Style.RESET_ALL} Comenzando el entrenamiento del modelo usando el dataset en {dataset_path}")
+# @app.route('/train')
+# def train_and_evaluate_model(dataset_path, model_path):
+#     # Log de inicio del entrenamiento
+#     print(
+#         f"{Fore.CYAN}[INFO]{Style.RESET_ALL} Comenzando el entrenamiento del modelo usando el dataset en {dataset_path}")
+#
+#     # Cargar el dataset
+#     print(f"{Fore.GREEN}[LOAD]{Style.RESET_ALL} Cargando el dataset desde {dataset_path}")
+#     data = pd.read_csv(dataset_path)
+#
+#     # Eliminar filas con valores NaN
+#     print(f"{Fore.YELLOW}[CLEAN]{Style.RESET_ALL} Eliminando filas con valores NaN")
+#     data.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
+#
+#     # Dividir los datos en conjuntos de entrenamiento y prueba
+#     print(f"{Fore.BLUE}[SPLIT]{Style.RESET_ALL} Dividiendo los datos en conjuntos de entrenamiento y prueba")
+#     X_train, X_test, y_train, y_test = train_test_split(data['Contents'], data['IsDangerous'], test_size=0.2,
+#                                                         random_state=42)
+#
+#     # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
+#     print(
+#         f"{Fore.MAGENTA}[PIPELINE]{Style.RESET_ALL} Creando un pipeline con un vectorizador TF-IDF y un clasificador SVM")
+#     pipeline = Pipeline([
+#         ('tfidf', TfidfVectorizer()),
+#         ('svm', SVC())
+#     ])
+#
+#     # Entrenar el pipeline
+#     print(f"{Fore.RED}[TRAIN]{Style.RESET_ALL} Entrenando el modelo...")
+#     pipeline.fit(X_train, y_train)
+#
+#     # Realizar predicciones en el conjunto de prueba
+#     print(f"{Fore.CYAN}[PREDICT]{Style.RESET_ALL} Realizando predicciones en el conjunto de prueba")
+#     predictions = pipeline.predict(X_test)
+#
+#     # Generar el informe de estadísticas del modelo
+#     print(f"{Fore.GREEN}[REPORT]{Style.RESET_ALL} Generando informe de estadísticas del modelo")
+#     report = classification_report(y_test, predictions)
+#
+#     # Guardar el modelo
+#     print(f"{Fore.YELLOW}[SAVE]{Style.RESET_ALL} Guardando el modelo entrenado en {model_path}")
+#     joblib.dump(pipeline, model_path)
+#
+#     # Mostrar el informe completo
+#     print(f"{Fore.MAGENTA}--------------- Model Statistics Report {dataset_path} ---------------{Style.RESET_ALL}")
+#     print(report)
+#
+#     # Guardar la caché
+#     print(f"{Fore.BLUE}[CACHE]{Style.RESET_ALL} Guardando la caché en disco")
+#     save_cache_to_disk()
+#
+#     # Notificar que el entrenamiento ha finalizado
+#     print(f"{Fore.RED}[INFO]{Style.RESET_ALL} Entrenamiento ha finalizado")
 
-    # Cargar el dataset
-    print(f"{Fore.GREEN}[LOAD]{Style.RESET_ALL} Cargando el dataset desde {dataset_path}")
-    data = pd.read_csv(dataset_path)
+@app.route('/train', methods=['POST'])
+def train_and_evaluate_model():
+    # Obtener los datos de la solicitud HTTP
+    data_file = request.files.get('dataset')
+    model_name = request.form.get('model_name')
+
+    # Verifica si se recibieron los datos correctamente
+    if not data_file or not model_name:
+        return jsonify({"error": "Falta el archivo del dataset o el nombre del nuevo modelo"}), 400
+
+    # Guardar el archivo en el disco temporalmente (opcional)
+    dataset_path = f"datasets/temp/{data_file.filename}"
+    data_file.save(dataset_path)
+
+    # Leer el dataset directamente desde el archivo en memoria
+    dt = pd.read_csv(dataset_path)
+    data = pd.concat([dt, merged_data_random])
 
     # Eliminar filas con valores NaN
     print(f"{Fore.YELLOW}[CLEAN]{Style.RESET_ALL} Eliminando filas con valores NaN")
@@ -86,7 +145,7 @@ def train_and_evaluate_model(dataset_path, model_path):
 
     # Dividir los datos en conjuntos de entrenamiento y prueba
     print(f"{Fore.BLUE}[SPLIT]{Style.RESET_ALL} Dividiendo los datos en conjuntos de entrenamiento y prueba")
-    X_train, X_test, y_train, y_test = train_test_split(data['Contents'], data['IsDangerous'], test_size=0.3,
+    X_train, X_test, y_train, y_test = train_test_split(data['Contents'], data['IsDangerous'], test_size=0.2,
                                                         random_state=42)
 
     # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
@@ -109,20 +168,17 @@ def train_and_evaluate_model(dataset_path, model_path):
     print(f"{Fore.GREEN}[REPORT]{Style.RESET_ALL} Generando informe de estadísticas del modelo")
     report = classification_report(y_test, predictions)
 
-    # Guardar el modelo
+    # Guardar el modelo entrenado
+    model_path = f"modelsft/{model_name}.joblib"
     print(f"{Fore.YELLOW}[SAVE]{Style.RESET_ALL} Guardando el modelo entrenado en {model_path}")
     joblib.dump(pipeline, model_path)
 
     # Mostrar el informe completo
-    print(f"{Fore.MAGENTA}--------------- Model Statistics Report {dataset_path} ---------------{Style.RESET_ALL}")
+    print(f"{Fore.MAGENTA}--------------- Model Statistics Report {model_path} ---------------{Style.RESET_ALL}")
     print(report)
 
-    # Guardar la caché
-    print(f"{Fore.BLUE}[CACHE]{Style.RESET_ALL} Guardando la caché en disco")
-    save_cache_to_disk()
-
-    # Notificar que el entrenamiento ha finalizado
-    print(f"{Fore.RED}[INFO]{Style.RESET_ALL} Entrenamiento ha finalizado")
+    # Devuelve una respuesta JSON con la URL del modelo guardado (si es necesario)
+    return jsonify({"message": "Entrenamiento completado con éxito", "model_path": model_path}), 200
 
 
 # Entrenar y evaluar el modelo con los datasets proporcionados
