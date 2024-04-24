@@ -6,7 +6,7 @@ from datetime import datetime
 import joblib
 import pandas as pd
 from colorama import Fore, Style
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, copy_current_request_context
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report
 from sklearn.metrics.pairwise import cosine_similarity
@@ -250,93 +250,99 @@ def get_model_name():
 
 @app.route('/train', methods=['POST'])
 def train_and_evaluate_model():
+    def process_training_request():
+        try:
+            # Obtener los datos de la solicitud HTTP
+            data_file = request.files.get('dataset')
+
+            # Verifica si se recibió el archivo correctamente
+            if not data_file:
+                print("Error: Falta el archivo del dataset")
+                return {"error": "Falta el archivo del dataset"}
+
+            # Guardar el archivo en el disco temporalmente
+            dataset_path = f"datasets/temp/{data_file.filename}"
+            data_file.save(dataset_path)
+
+            # Leer el dataset desde el archivo
+            dt = pd.read_csv(dataset_path)
+
+            # Puedes añadir el código de fusión aquí si tienes un dataset adicional para combinar
+            # data = pd.concat([dt, merged_data_random])
+
+            # Eliminar filas con valores NaN
+            dt.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
+
+            # Dividir los datos en conjuntos de entrenamiento y prueba
+            X_train, X_test, y_train, y_test = train_test_split(dt['Contents'], dt['IsDangerous'], test_size=0.2,
+                                                                random_state=42)
+
+            # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
+            pipeline = Pipeline([
+                ('tfidf', TfidfVectorizer()),
+                ('svm', SVC())
+            ])
+
+            # Entrenar el pipeline
+            pipeline.fit(X_train, y_train)
+
+            # Realizar predicciones en el conjunto de prueba
+            predictions = pipeline.predict(X_test)
+
+            # Generar el informe de estadísticas del modelo
+            report = classification_report(y_test, predictions)
+
+            # Manejar la versión del modelo
+            models_folder = 'modelsft/'
+            model_files = [file for file in os.listdir(models_folder) if file.endswith('.joblib')]
+
+            if model_files:
+                # Ordenar los archivos por fecha de modificación, el más reciente primero
+                model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
+
+                # Extraer la versión del último modelo
+                latest_model_name = model_files[0]
+                latest_version_str = latest_model_name.split('_')[1]  # Formato 'classifier_modelV#'
+                latest_version = int(latest_version_str.replace('V', ''))
+
+                # Calcular la nueva versión sumando 1
+                new_version = latest_version + 1
+            else:
+                # Si no hay modelos previos, empezamos con la versión 1
+                new_version = 1
+
+            # Generar el nombre del nuevo modelo con la nueva versión y la fecha y hora actual
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            new_model_name = f"classifier_modelV{new_version}_{timestamp}.joblib"
+            model_path = os.path.join(models_folder, new_model_name)
+
+            # Guardar el modelo entrenado
+            joblib.dump(pipeline, model_path)
+
+            # Mostrar el informe completo
+            print(f"--------------- Model Statistics Report {model_path} ---------------")
+            print(report)
+            # Al finalizar el entrenamiento, devolver un diccionario con el mensaje de éxito y la ruta del modelo
+            return {"message": "Entrenamiento completado con éxito", "model_path": model_path}
+
+        except Exception as e:
+            print(f"Error durante el proceso de entrenamiento: {str(e)}")
+            # Manejar el error devolviendo un diccionario con el error
+            return {"error": f"Error durante el entrenamiento: {str(e)}"}
+
     # Crear un hilo para manejar la solicitud de entrenamiento
     training_thread = threading.Thread(target=process_training_request)
     training_thread.start()
 
+    # Obtener el resultado de process_training_request
+    result = process_training_request()
+
     # Responder con un código de estado HTTP 202 (Accepted) indicando que el entrenamiento está en proceso
-    return jsonify({"message": "Entrenamiento en proceso"}), 202
-
-
-def process_training_request():
-    try:
-        # Obtener los datos de la solicitud HTTP
-        data_file = request.files.get('dataset')
-
-        # Verifica si se recibió el archivo correctamente
-        if not data_file:
-            print("Error: Falta el archivo del dataset")
-            return
-
-        # Guardar el archivo en el disco temporalmente
-        dataset_path = f"datasets/temp/{data_file.filename}"
-        data_file.save(dataset_path)
-
-        # Leer el dataset desde el archivo
-        dt = pd.read_csv(dataset_path)
-
-        # Puedes añadir el código de fusión aquí si tienes un dataset adicional para combinar
-        # data = pd.concat([dt, merged_data_random])
-
-        # Eliminar filas con valores NaN
-        dt.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
-
-        # Dividir los datos en conjuntos de entrenamiento y prueba
-        X_train, X_test, y_train, y_test = train_test_split(dt['Contents'], dt['IsDangerous'], test_size=0.2,
-                                                            random_state=42)
-
-        # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
-        pipeline = Pipeline([
-            ('tfidf', TfidfVectorizer()),
-            ('svm', SVC())
-        ])
-
-        # Entrenar el pipeline
-        pipeline.fit(X_train, y_train)
-
-        # Realizar predicciones en el conjunto de prueba
-        predictions = pipeline.predict(X_test)
-
-        # Generar el informe de estadísticas del modelo
-        report = classification_report(y_test, predictions)
-
-        # Manejar la versión del modelo
-        models_folder = 'modelsft/'
-        model_files = [file for file in os.listdir(models_folder) if file.endswith('.joblib')]
-
-        if model_files:
-            # Ordenar los archivos por fecha de modificación, el más reciente primero
-            model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
-
-            # Extraer la versión del último modelo
-            latest_model_name = model_files[0]
-            latest_version_str = latest_model_name.split('_')[1]  # Formato 'classifier_modelV#'
-            latest_version = int(latest_version_str.replace('V', ''))
-
-            # Calcular la nueva versión sumando 1
-            new_version = latest_version + 1
-        else:
-            # Si no hay modelos previos, empezamos con la versión 1
-            new_version = 1
-
-        # Generar el nombre del nuevo modelo con la nueva versión y la fecha y hora actual
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        new_model_name = f"classifier_modelV{new_version}_{timestamp}.joblib"
-        model_path = os.path.join(models_folder, new_model_name)
-
-        # Guardar el modelo entrenado
-        joblib.dump(pipeline, model_path)
-
-        # Mostrar el informe completo
-        print(f"--------------- Model Statistics Report {model_path} ---------------")
-        print(report)
-        # Al finalizar el entrenamiento, puedes retornar un código de estado HTTP 200 (OK)
-        return jsonify({"message": "Entrenamiento completado con éxito", "model_path": model_path}), 200
-
-    except Exception as e:
-        print(f"Error durante el proceso de entrenamiento: {str(e)}")
-        # Manejar el error retornando un código de estado HTTP 500 (Internal Server Error)
-        return jsonify({"error": f"Error durante el entrenamiento: {str(e)}"}), 500
+    # o con un código de estado HTTP 200 (OK) si se completó el entrenamiento
+    if "error" in result:
+        return jsonify(result), 500
+    else:
+        return jsonify(result), 200
 
 
 # Función para calcular la similitud coseno entre dos textos
