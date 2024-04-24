@@ -260,13 +260,13 @@ cloruro de sodio,1
 acido cianhidrico,1
 revista,0
 pelota de futbol,0
-agentes quimicos de guerra,0
+agentes quimicos de guerra,1
 arma de destruccion masiva,1
 cd,0
 acido perclorico,1
 sustancias inflamables,1
 toxinas,1
-monoxido de carbono,0
+monoxido de carbono,1
 gas mostaza,1
 carga hueca,1
 acido nitrico,1
@@ -274,9 +274,9 @@ llavero,0
 lanza cohetes,1
 gas de cloro,1
 sustancias venenosas,1
-sustancias quimicas peligrosas,0
+sustancias quimicas peligrosas,1
 veneno,1
-agentes neurotoxicos,0
+agentes neurotoxicos,1
 flores,0
 gas sarin,1
 papel,0
@@ -284,15 +284,15 @@ material radioactivo,1
 armas de destruccion masiva,1
 cartuchos de municion de calibre .22,1
 latas de aerosol inflamable,1
-baterias de litio recargables,0
+baterias de litio recargables,1
 pintura en aerosol con contenido de gas butano,1
 botellas de gas propano para camping,1
 cajas de fuegos artificiales,1
 botellas de acido clorhidrico,1
 cilindros de gas comprimido para soldadura,1
-tambores de desechos quimicos,0
+tambores de desechos quimicos,1
 paquetes de fuegos artificiales,1
-tanques de oxigeno medico,0
+tanques de oxigeno medico,1
 liquidos inflamables para encendedores,1
 cajas de cohetes pirotecnicos,1
 envases de queroseno para lamparas,1
@@ -316,19 +316,19 @@ botellas de gas butano para estufas,1
 latas de pintura en aerosol,1
 baterias de plomo-acido recargables,1
 bombonas de propano para barbacoas,1
-contenedores de acido fosforico,0
+contenedores de acido fosforico,1
 bolsas de nitrato de amonio,1
 tambores de cloruro de metileno,1
 botellas de gas natural licuado,1
-botes de limpiador de desagues,0
+botes de limpiador de desagues,1
 cilindros de acetileno para soldadura,1
 bidones de aceite de linaza,1
 latas de insecticida en aerosol,1
-frascos de acido fluorhidrico,0
-contenedores de acido acetico,0
+frascos de acido fluorhidrico,1
+contenedores de acido acetico,1
 envases de cloro liquido,1
 bolsas de acido nitrico,1
-botellas de amoniaco para limpieza,0
+botellas de amoniaco para limpieza,1
 latas de espray de pintura,1
 botes de adhesivo para madera,1
 cajas de cohetes para fiestas,1
@@ -424,7 +424,7 @@ cajas de cohetes para festivales de cine diluidos,1
 articulos de decoracion para el hogar,0
 libros educativos,0
 juguetes de plastico,0
-herramientas de jardineria,0
+herramientas de jardineria,1
 alimentos enlatados,0
 equipos deportivos,0
 productos de limpieza,0
@@ -470,3 +470,85 @@ prodotti da bagno condimenti vestiti usati e un paio di scarpe,0
 ersatzteile,0
 19 gebrauchte ersatz-xbox-steuerungen,0
 27 gebrauchte ersatzsteuerungen,0
+armas,1
+guns,1
+ammo,1
+cuchillos,1
+municiones,1
+drogas,1
+marihuana,1
+cocaina,1
+knifes,0
+ropa-zapatos-munecos,0
+仿真枪械,0
+hidruros,1
+5,0
+4,0
+3,0
+2,0
+mascotas,0
+disco de ascetatodiscos de acetatodiscos ascetatos,0
+camara,0
+mouse,0
+laptop usada,0
+calzado,0
+cables termos rellenos,0
+art deportivos 5924,0
+servicio,0
+edredonesedredonesedredonescubrelechos,0
+pocket flash,0
+spray grinder,0
+mesa,0
+prendas 3531,0
+pc parts,0
+computer parts,0
+bebidas,0
+pc accesorios,0
+rellenador huecos,0
+tapete,0
+massager gun,0
+bandeja para horno,0
+ventilador a/c,0
+roparopa bebe,0
+medicina,0
+paraguas redondo,0
+roparoparopa,0
+bebe,0
+impresora c7000,0
+refigerador de vino,0
+librolibrolibrolibrolibrolibro1 librolibro,0
+cenador de patio,0
+hogar,0
+recipientesganchosropamonos,0
+coladoralicatesforrocelgsnchos,0
+universal registro t,0
+party grado,0
+computador accesorios,0
+basilik v3,0
+puppies,0
+tenis,0
+amortiguador,0
+6 cosmeticos,0
+soplador,0
+estatuilla,0
+6 cosmeticoslego1 legolegolego,0
+cubrelechos,0
+6 cosmeticos3 legos,0
+6 fire tvstick,0
+bisuteria moldes,0
+moldes caucho,0
+home goods,0
+componentes pc,0
+cartucherarecipienteganchosropaforro cel,0
+partes para botes 8409999900,0
+autopartes,0
+partes de tractor p.a 8701910000,0
+partes de maquina  cocechadora pa 8433909000  tlc invoice 2399361 generar simplificada,0
+accesorios de casa,0
+partes de maquina  cocechadora pa 8433909000  tlc invoice 153698 generar simplificada,0
+tablas,0
+madera,0
+pc componentes,0
+collares,0
+articulos personales,0
+accesorios y articulos para la casa,0
