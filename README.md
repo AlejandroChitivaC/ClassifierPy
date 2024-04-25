@@ -1,5 +1,3 @@
----
-
 # Hazardous Content Classifier
 
 This project implements a classifier to predict whether a content is hazardous or not. It uses a machine learning model trained on a dataset of text with binary labels (`0` for non-hazardous content and `1` for hazardous content). The model combines TF-IDF vectorization with an SVM classifier to make predictions.
