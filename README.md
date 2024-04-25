@@ -13,7 +13,7 @@ This project implements a classifier to predict whether a content is hazardous o
 
 ## Project Structure
 
-- **`app.py`**: Main file containing the Flask API for handling training and classification requests.
+- **`classifier.py`**: Main file containing the Flask API for handling training and classification requests.
 - **`datasets/`**: Directory containing datasets for training and storing results.
 - **`modelsft/`**: Directory storing trained models.
 - **`cache.pkl`**: Cache file storing previous predictions to improve performance.
