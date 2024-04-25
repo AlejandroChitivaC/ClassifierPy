@@ -2,26 +2,23 @@ import os
 import pickle
 import threading
 from datetime import datetime
+from queue import Queue
 
 import joblib
 import pandas as pd
 from colorama import Fore, Style
-from flask import Flask, request, jsonify, copy_current_request_context
+from flask import Flask, request, jsonify
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
+from tqdm import tqdm
 
 # Crear la aplicación Flask
 app = Flask(__name__)
 
-# Cargar el modelo entrenado
-# model_path = "modelsft/classifier_modelV3_trained_CN_EN_ES.joblib"
-# model_path = "modelsft/classifier_modelV4_trained-endpoint.joblib"
-#
-# model = joblib.load(model_path)
 model = None  # Variable global para almacenar el modelo
 
 # Cargar el diccionario cache desde el disco si existe, o crear uno nuevo si no existe
@@ -105,247 +102,108 @@ def get_model_name():
     }), 200
 
 
-# @app.route('/train', methods=['POST'])
-# def train_and_evaluate_model():
-#     # Obtener los datos de la solicitud HTTP
-#     data_file = request.files.get('dataset')
-#     model_name = request.form.get('model_name')
-#
-#     # Verifica si se recibieron los datos correctamente
-#     if not data_file or not model_name:
-#         return jsonify({"error": "Falta el archivo del dataset o el nombre del nuevo modelo"}), 400
-#
-#     # Guardar el archivo en el disco temporalmente (opcional)
-#     dataset_path = f"datasets/temp/{data_file.filename}"
-#     data_file.save(dataset_path)
-#
-#     # Leer el dataset directamente desde el archivo en memoria
-#     dt = pd.read_csv(dataset_path)
-#     data = pd.concat([dt, merged_data_random])
-#     print(f"{Fore.GREEN}[MERGE]{Style.RESET_ALL} Uniendo dataset original con el dataset cargado...")
-#     # Eliminar filas con valores NaN
-#     print(f"{Fore.YELLOW}[CLEAN]{Style.RESET_ALL} Eliminando filas con valores NaN")
-#     data.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
-#
-#     # Dividir los datos en conjuntos de entrenamiento y prueba
-#     print(f"{Fore.BLUE}[SPLIT]{Style.RESET_ALL} Dividiendo los datos en conjuntos de entrenamiento y prueba")
-#     X_train, X_test, y_train, y_test = train_test_split(data['Contents'], data['IsDangerous'], test_size=0.2,
-#                                                         random_state=42)
-#
-#     # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
-#     print(
-#         f"{Fore.MAGENTA}[PIPELINE]{Style.RESET_ALL} Creando un pipeline con un vectorizador TF-IDF y un clasificador SVM")
-#     pipeline = Pipeline([
-#         ('tfidf', TfidfVectorizer()),
-#         ('svm', SVC())
-#     ])
-#
-#     # Entrenar el pipeline
-#     print(f"{Fore.RED}[TRAIN]{Style.RESET_ALL} Entrenando el modelo...")
-#     pipeline.fit(X_train, y_train)
-#
-#     # Realizar predicciones en el conjunto de prueba
-#     print(f"{Fore.CYAN}[PREDICT]{Style.RESET_ALL} Realizando predicciones en el conjunto de prueba")
-#     predictions = pipeline.predict(X_test)
-#
-#     # Generar el informe de estadísticas del modelo
-#     print(f"{Fore.GREEN}[REPORT]{Style.RESET_ALL} Generando informe de estadísticas del modelo")
-#     report = classification_report(y_test, predictions)
-#
-#     # Guardar el modelo entrenado
-#     model_path = f"modelsft/{model_name}.joblib"
-#     print(f"{Fore.YELLOW}[SAVE]{Style.RESET_ALL} Guardando el modelo entrenado en {model_path}")
-#     joblib.dump(pipeline, model_path)
-#
-#     # Mostrar el informe completo
-#     print(f"{Fore.MAGENTA}--------------- Model Statistics Report {model_path} ---------------{Style.RESET_ALL}")
-#     print(report)
-#
-#     # Devuelve una respuesta JSON con la URL del modelo guardado (si es necesario)
-#     return jsonify({"message": "Entrenamiento completado con éxito", "model_path": model_path}), 200
-
-# @app.route('/train', methods=['POST'])
-# def train_and_evaluate_model():
-#     global model  # Referencia a la variable global `model`
-#
-#     # Obtener los datos de la solicitud HTTP
-#     data_file = request.files.get('dataset')
-#
-#     # Verifica si se recibió el archivo correctamente
-#     if not data_file:
-#         return jsonify({"error": "Falta el archivo del dataset"}), 400
-#
-#     # Guardar el archivo en el disco temporalmente (opcional)
-#     dataset_path = f"datasets/temp/{data_file.filename}"
-#     data_file.save(dataset_path)
-#
-#     # Leer el dataset directamente desde el archivo en memoria
-#     dt = pd.read_csv(dataset_path)
-#     data = pd.concat([dt, merged_data_random])
-#     print(f"{Fore.GREEN}[MERGE]{Style.RESET_ALL} Uniendo dataset original con el dataset cargado...")
-#     # Eliminar filas con valores NaN
-#     print(f"{Fore.YELLOW}[CLEAN]{Style.RESET_ALL} Eliminando filas con valores NaN")
-#     data.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
-#
-#     # Dividir los datos en conjuntos de entrenamiento y prueba
-#     print(f"{Fore.BLUE}[SPLIT]{Style.RESET_ALL} Dividiendo los datos en conjuntos de entrenamiento y prueba")
-#     X_train, X_test, y_train, y_test = train_test_split(data['Contents'], data['IsDangerous'], test_size=0.2,
-#                                                         random_state=42)
-#
-#     # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
-#     print(
-#         f"{Fore.MAGENTA}[PIPELINE]{Style.RESET_ALL} Creando un pipeline con un vectorizador TF-IDF y un clasificador SVM")
-#     pipeline = Pipeline([
-#         ('tfidf', TfidfVectorizer()),
-#         ('svm', SVC())
-#     ])
-#
-#     # Entrenar el pipeline
-#     print(f"{Fore.RED}[TRAIN]{Style.RESET_ALL} Entrenando el modelo...")
-#     pipeline.fit(X_train, y_train)
-#
-#     # Realizar predicciones en el conjunto de prueba
-#     print(f"{Fore.CYAN}[PREDICT]{Style.RESET_ALL} Realizando predicciones en el conjunto de prueba")
-#     predictions = pipeline.predict(X_test)
-#
-#     # Generar el informe de estadísticas del modelo
-#     print(f"{Fore.GREEN}[REPORT]{Style.RESET_ALL} Generando informe de estadísticas del modelo")
-#     report = classification_report(y_test, predictions)
-#
-#     # Determinar la versión del último modelo y calcular la nueva versión
-#     models_folder = 'modelsft/'
-#     model_files = os.listdir(models_folder)
-#     model_files = [file for file in model_files if file.endswith('.joblib')]
-#
-#     if model_files:
-#         # Ordenar los archivos por fecha de modificación, el más reciente primero
-#         model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
-#
-#         # Extraer la versión del último modelo
-#         latest_model_name = model_files[0]
-#         latest_version_str = latest_model_name.split('_')[1]  # Suponiendo el formato 'classifier_modelV#'
-#         latest_version = int(latest_version_str.replace('V', ''))
-#
-#         # Calcular la nueva versión sumando 1
-#         new_version = latest_version + 1
-#     else:
-#         # Si no hay modelos previos, empezamos con la versión 1
-#         new_version = 1
-#
-#     # Generar el nombre del nuevo modelo con la nueva versión y la fecha y hora actual
-#     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-#     new_model_name = f"classifier_modelV{new_version}_{timestamp}.joblib"
-#     model_path = os.path.join(models_folder, new_model_name)
-#
-#     # Guardar el modelo entrenado
-#     print(f"{Fore.YELLOW}[SAVE]{Style.RESET_ALL} Guardando el modelo entrenado en {model_path}")
-#     joblib.dump(pipeline, model_path)
-#
-#     # Mostrar el informe completo
-#     print(f"{Fore.MAGENTA}--------------- Model Statistics Report {model_path} ---------------{Style.RESET_ALL}")
-#     print(report)
-#
-#     # Devuelve una respuesta JSON con la confirmación del éxito del entrenamiento y la ruta del modelo guardado
-#     return jsonify({"message": "Entrenamiento completado con éxito", "model_path": model_path})
-
 @app.route('/train', methods=['POST'])
 def train_and_evaluate_model():
-    def process_training_request():
-        try:
-            # Obtener los datos de la solicitud HTTP
-            data_file = request.files.get('dataset')
+    # Obtener el archivo de datos desde la solicitud
+    data_file = request.files.get('dataset')
+    if not data_file:
+        return jsonify({"error": "Falta el archivo del dataset"}), 400
 
-            # Verifica si se recibió el archivo correctamente
-            if not data_file:
-                print("Error: Falta el archivo del dataset")
-                return {"error": "Falta el archivo del dataset"}
-
-            # Guardar el archivo en el disco temporalmente
-            dataset_path = f"datasets/temp/{data_file.filename}"
-            data_file.save(dataset_path)
-
-            # Leer el dataset desde el archivo
-            dt = pd.read_csv(dataset_path)
-
-            # Puedes añadir el código de fusión aquí si tienes un dataset adicional para combinar
-            # data = pd.concat([dt, merged_data_random])
-
-            # Eliminar filas con valores NaN
-            dt.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
-
-            # Dividir los datos en conjuntos de entrenamiento y prueba
-            X_train, X_test, y_train, y_test = train_test_split(dt['Contents'], dt['IsDangerous'], test_size=0.2,
-                                                                random_state=42)
-
-            # Crear un pipeline con un vectorizador TF-IDF y un clasificador SVM
-            pipeline = Pipeline([
-                ('tfidf', TfidfVectorizer()),
-                ('svm', SVC())
-            ])
-
-            # Entrenar el pipeline
-            pipeline.fit(X_train, y_train)
-
-            # Realizar predicciones en el conjunto de prueba
-            predictions = pipeline.predict(X_test)
-
-            # Generar el informe de estadísticas del modelo
-            report = classification_report(y_test, predictions)
-
-            # Manejar la versión del modelo
-            models_folder = 'modelsft/'
-            model_files = [file for file in os.listdir(models_folder) if file.endswith('.joblib')]
-
-            if model_files:
-                # Ordenar los archivos por fecha de modificación, el más reciente primero
-                model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
-
-                # Extraer la versión del último modelo
-                latest_model_name = model_files[0]
-                latest_version_str = latest_model_name.split('_')[1]  # Formato 'classifier_modelV#'
-                latest_version = int(latest_version_str.replace('V', ''))
-
-                # Calcular la nueva versión sumando 1
-                new_version = latest_version + 1
-            else:
-                # Si no hay modelos previos, empezamos con la versión 1
-                new_version = 1
-
-            # Generar el nombre del nuevo modelo con la nueva versión y la fecha y hora actual
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            new_model_name = f"classifier_modelV{new_version}_{timestamp}.joblib"
-            model_path = os.path.join(models_folder, new_model_name)
-
-            # Guardar el modelo entrenado
-            joblib.dump(pipeline, model_path)
-
-            # Mostrar el informe completo
-            print(f"--------------- Model Statistics Report {model_path} ---------------")
-            print(report)
-            # Al finalizar el entrenamiento, devolver un diccionario con el mensaje de éxito y la ruta del modelo
-            return {"message": "Entrenamiento completado con éxito", "model_path": model_path}
-
-        except Exception as e:
-            print(f"Error durante el proceso de entrenamiento: {str(e)}")
-            # Manejar el error devolviendo un diccionario con el error
-            return {"error": f"Error durante el entrenamiento: {str(e)}"}
-
-    # Crear un hilo para manejar la solicitud de entrenamiento
-    training_thread = threading.Thread(target=process_training_request)
+    result_queue = Queue()
+    training_thread = threading.Thread(target=process_training_request, args=(data_file, result_queue))
     training_thread.start()
 
-    # Obtener el resultado de process_training_request
-    result = process_training_request()
+    result = result_queue.get()
 
-    # Responder con un código de estado HTTP 202 (Accepted) indicando que el entrenamiento está en proceso
-    # o con un código de estado HTTP 200 (OK) si se completó el entrenamiento
+    # Verificar si hubo algún error durante el entrenamiento
     if "error" in result:
         return jsonify(result), 500
     else:
         return jsonify(result), 200
 
 
-# Función para calcular la similitud coseno entre dos textos
+def process_training_request(data_file, result_queue):
+    try:
+        global model
+
+        # Guardar el archivo en el disco temporalmente
+        dataset_path = f"datasets/temp/{data_file.filename}"
+        data_file.save(dataset_path)
+
+        # Leer el dataset desde el archivo
+        new_data = pd.read_csv(dataset_path)
+
+        print(f"{Fore.GREEN}[MERGE]{Style.RESET_ALL} Combinando dataset original con el nuevo dataset cargado...")
+        # Combinar los datos originales con el nuevo conjunto de datos
+        combined_data = pd.concat([merged_data_random, new_data], ignore_index=True)
+        print(f"{Fore.YELLOW}[CLEAN]{Style.RESET_ALL} Eliminando filas con valores NaN")
+        combined_data.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
+
+        print(f"{Fore.BLUE}[SPLIT]{Style.RESET_ALL} Dividiendo los datos en conjuntos de entrenamiento y prueba")
+        X_train, X_test, y_train, y_test = train_test_split(combined_data['Contents'], combined_data['IsDangerous'], test_size=0.2, random_state=42)
+
+        print(f"{Fore.BLUE}[INFO]{Style.RESET_ALL} Obteniendo versión del último modelo entrenado")
+        models_folder = 'modelsft/'
+        model_files = [file for file in os.listdir(models_folder) if file.endswith('.joblib')]
+
+        if model_files:
+            # Ordenar los archivos por fecha de modificación, el más reciente primero
+            model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
+
+            # Extraer el nombre del último modelo guardado
+            latest_model_name = model_files[0]
+            print(f"{Fore.LIGHTGREEN_EX}[LOAD]{Style.RESET_ALL} Último modelo encontrado: {latest_model_name}")
+
+            # Generar la ruta completa del último modelo guardado
+            latest_model_path = os.path.join(models_folder, latest_model_name)
+
+            # Cargar el último modelo guardado desde el disco
+            print(f"{Fore.BLUE}[INFO]{Style.RESET_ALL} Último modelo cargado: {latest_model_name}")
+            model = joblib.load(latest_model_path)
+
+        else:
+            # Si no hay modelos previos, crea un nuevo pipeline
+            model = Pipeline([
+                ('tfidf', TfidfVectorizer(stop_words='english')),
+                ('svm', SVC())
+            ])
+            print(f"{Fore.MAGENTA}[PIPELINE]{Style.RESET_ALL} No se encontró un modelo previo, creando un nuevo pipeline")
+
+        # Reentrenar el modelo
+        print(f"{Fore.LIGHTRED_EX}[TRAIN]{Style.RESET_ALL} Reentrenando el modelo con el nuevo conjunto de datos...")
+        model.fit(X_train, y_train)
+
+        # Generar un nuevo nombre de archivo para el modelo reentrenado
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        new_model_path = f"modelsft/retrained_{latest_model_name}_{timestamp}.joblib"
+
+        # Guardar el modelo reentrenado
+        print(f"{Fore.YELLOW}[SAVE]{Style.RESET_ALL} Guardando el modelo reentrenado en {new_model_path}")
+        joblib.dump(model, new_model_path)
+
+        # Realizar predicciones en el conjunto de prueba
+        print(f"{Fore.CYAN}[PREDICT]{Style.RESET_ALL} Realizando predicciones en el conjunto de prueba")
+        predictions = model.predict(X_test)
+
+        # Generar el informe de estadísticas del modelo
+        print(f"{Fore.GREEN}[REPORT]{Style.RESET_ALL} Generando informe de estadísticas del modelo")
+        report = classification_report(y_test, predictions)
+        print(report)
+
+        print(
+            f"{Fore.MAGENTA}--------------- Model Statistics Report {new_model_path} ---------------{Style.RESET_ALL}")
+        print(report)
+
+        # Guardar el resultado del entrenamiento en la cola de resultados
+        result_queue.put({"message": "Entrenamiento completado con éxito", "model_path": new_model_path})
+
+    except Exception as e:
+        print(f"Error durante el proceso de entrenamiento: {str(e)}")
+        # Guardar el error en la cola de resultados
+        result_queue.put({"error": f"Error durante el entrenamiento: {str(e)}"})
+
+
+
 def calculate_similarity(text1, text2):
     vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform([text1, text2])
