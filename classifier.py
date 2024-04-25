@@ -14,7 +14,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
-from tqdm import tqdm
 
 # Crear la aplicación Flask
 app = Flask(__name__)
@@ -140,7 +139,8 @@ def process_training_request(data_file, result_queue):
         combined_data.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
 
         print(f"{Fore.BLUE}[SPLIT]{Style.RESET_ALL} Dividiendo los datos en conjuntos de entrenamiento y prueba")
-        X_train, X_test, y_train, y_test = train_test_split(combined_data['Contents'], combined_data['IsDangerous'], test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(combined_data['Contents'], combined_data['IsDangerous'],
+                                                            test_size=0.2, random_state=42)
 
         print(f"{Fore.BLUE}[INFO]{Style.RESET_ALL} Obteniendo versión del último modelo entrenado")
         models_folder = 'modelsft/'
@@ -167,7 +167,8 @@ def process_training_request(data_file, result_queue):
                 ('tfidf', TfidfVectorizer(stop_words='english')),
                 ('svm', SVC())
             ])
-            print(f"{Fore.MAGENTA}[PIPELINE]{Style.RESET_ALL} No se encontró un modelo previo, creando un nuevo pipeline")
+            print(
+                f"{Fore.MAGENTA}[PIPELINE]{Style.RESET_ALL} No se encontró un modelo previo, creando un nuevo pipeline")
 
         # Reentrenar el modelo
         print(f"{Fore.LIGHTRED_EX}[TRAIN]{Style.RESET_ALL} Reentrenando el modelo con el nuevo conjunto de datos...")
@@ -196,12 +197,14 @@ def process_training_request(data_file, result_queue):
 
         # Guardar el resultado del entrenamiento en la cola de resultados
         result_queue.put({"message": "Entrenamiento completado con éxito", "model_path": new_model_path})
+        os.remove(dataset_path)
+        print(f"{Fore.GREEN}[DELETE]{Style.RESET_ALL} Dataset temporal eliminado de {dataset_path}")
+
 
     except Exception as e:
         print(f"Error durante el proceso de entrenamiento: {str(e)}")
         # Guardar el error en la cola de resultados
         result_queue.put({"error": f"Error durante el entrenamiento: {str(e)}"})
-
 
 
 def calculate_similarity(text1, text2):
