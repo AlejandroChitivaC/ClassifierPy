@@ -1,5 +1,3 @@
-Aquí tienes una descripción para un archivo README en inglés y en formato Markdown (`.md`):
-
 ---
 
 # Hazardous Content Classifier
