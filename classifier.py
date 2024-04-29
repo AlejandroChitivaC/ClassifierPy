@@ -18,9 +18,8 @@ from sklearn.svm import SVC
 # Crear la aplicación Flask
 app = Flask(__name__)
 
-model = None  # Variable global para almacenar el modelo
+model = None
 
-# Cargar el diccionario cache desde el disco si existe, o crear uno nuevo si no existe
 try:
     with open('cache.pkl', 'rb') as f:
         cache = pickle.load(f)
@@ -31,15 +30,6 @@ except FileNotFoundError:
 def save_cache_to_disk():
     with open('cache.pkl', 'wb') as f:
         pickle.dump(cache, f)
-    export_cache_to_csv()
-
-
-def export_cache_to_csv():
-    # Convierte el diccionario de caché en un DataFrame de pandas
-    cache_df = pd.DataFrame(list(cache.items()), columns=['content', 'prediction'])
-    # Guarda el DataFrame como un archivo CSV en la carpeta 'datasets'
-    cache_df.to_csv("datasets/datasetCachePredictions.csv", index=False, sep=",")
-    print(f"{Fore.GREEN}[SAVE]{Style.RESET_ALL} Caché exportado a CSV en datasets/datasetCachePredictions.csv")
 
 
 # # Leer el dataset
@@ -50,7 +40,6 @@ dt4 = pd.read_csv("datasets/datasetV2_CN.csv", sep=",", encoding="utf-8")
 dt4.rename(columns={'很危险': 'IsDangerous', '内容': 'Contents'}, inplace=True)
 
 merged_data = pd.concat([dt1, dt2, dt3, dt4], ignore_index=True)
-print(merged_data.head())
 # # Ordenar aleatoriamente los datos
 merged_data_random = (
     merged_data[['IsDangerous', 'Contents']]
@@ -58,43 +47,27 @@ merged_data_random = (
 )
 
 merged_data_random.dropna()
-print(merged_data_random.head())
 merged_data_random.to_csv("datasets/datasetTrainMergedDataML.csv", index=False, sep=",", encoding="utf-8")
 
 
 @app.route('/getModelName', methods=['GET'])
 def get_model_name():
-    global model  # Referencia a la variable global `model`
+    global model
 
-    # Ruta de la carpeta donde se almacenan los modelos
     models_folder = 'modelsft/'
-
-    # Lista todos los archivos en la carpeta
     model_files = os.listdir(models_folder)
-
-    # Filtra solo los archivos .joblib (o la extensión de los modelos)
     model_files = [file for file in model_files if file.endswith('.joblib')]
 
     if not model_files:
-        # Si no hay archivos de modelos, retornar una respuesta indicando que no se encontraron modelos
         return jsonify({"error": "No se encontraron modelos en la carpeta 'modelsft'"}), 404
 
-    # Ordenar los archivos por fecha de modificación, el más reciente primero
     model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
-
-    # El primer archivo en la lista es el más reciente
     latest_model_name = model_files[0]
-
-    # Extraer la versión del modelo del nombre del archivo
-    # Supongamos que los nombres de archivo siguen el formato: model_vN.joblib
-    # donde N es la versión del modelo.
     model_version = latest_model_name.split('_')[-2].replace('.joblib', '')
 
-    # Cargar el modelo desde el archivo más reciente
     model_path = os.path.join(models_folder, latest_model_name)
     model = joblib.load(model_path)
 
-    # Retornar el nombre del archivo del último modelo y su versión
     return jsonify({
         "latest_model_name": latest_model_name,
         "model_version": model_version
@@ -103,7 +76,7 @@ def get_model_name():
 
 @app.route('/train', methods=['POST'])
 def train_and_evaluate_model():
-    # Obtener el archivo de datos desde la solicitud
+    clear_cache()
     data_file = request.files.get('dataset')
     if not data_file:
         return jsonify({"error": "Falta el archivo del dataset"}), 400
@@ -125,15 +98,12 @@ def process_training_request(data_file, result_queue):
     try:
         global model
 
-        # Guardar el archivo en el disco temporalmente
         dataset_path = f"datasets/temp/{data_file.filename}"
         data_file.save(dataset_path)
 
-        # Leer el dataset desde el archivo
         new_data = pd.read_csv(dataset_path)
 
         print(f"{Fore.GREEN}[MERGE]{Style.RESET_ALL} Combinando dataset original con el nuevo dataset cargado...")
-        # Combinar los datos originales con el nuevo conjunto de datos
         combined_data = pd.concat([merged_data_random, new_data], ignore_index=True)
         print(f"{Fore.YELLOW}[CLEAN]{Style.RESET_ALL} Eliminando filas con valores NaN")
         combined_data.dropna(subset=['Contents', 'IsDangerous'], inplace=True)
@@ -147,24 +117,19 @@ def process_training_request(data_file, result_queue):
         model_files = [file for file in os.listdir(models_folder) if file.endswith('.joblib')]
 
         if model_files:
-            # Ordenar los archivos por fecha de modificación, el más reciente primero
             model_files.sort(key=lambda x: os.path.getmtime(os.path.join(models_folder, x)), reverse=True)
 
-            # Extraer el nombre del último modelo guardado
             latest_model_name = model_files[0]
             print(f"{Fore.LIGHTGREEN_EX}[LOAD]{Style.RESET_ALL} Último modelo encontrado: {latest_model_name}")
 
-            # Generar la ruta completa del último modelo guardado
             latest_model_path = os.path.join(models_folder, latest_model_name)
 
-            # Cargar el último modelo guardado desde el disco
             print(f"{Fore.BLUE}[INFO]{Style.RESET_ALL} Último modelo cargado: {latest_model_name}")
             model = joblib.load(latest_model_path)
 
         else:
-            # Si no hay modelos previos, crea un nuevo pipeline
             model = Pipeline([
-                ('tfidf', TfidfVectorizer(stop_words='english')),
+                ('tfidf', TfidfVectorizer()),
                 ('svm', SVC())
             ])
             print(
@@ -174,9 +139,8 @@ def process_training_request(data_file, result_queue):
         print(f"{Fore.LIGHTRED_EX}[TRAIN]{Style.RESET_ALL} Reentrenando el modelo con el nuevo conjunto de datos...")
         model.fit(X_train, y_train)
 
-        # Generar un nuevo nombre de archivo para el modelo reentrenado
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        new_model_path = f"modelsft/retrained_{latest_model_name}_{timestamp}.joblib"
+        new_model_path = f"modelsft/retrained_{latest_model_name.replace('.joblib', '')}_{timestamp}_trainedAzure.joblib"
 
         # Guardar el modelo reentrenado
         print(f"{Fore.YELLOW}[SAVE]{Style.RESET_ALL} Guardando el modelo reentrenado en {new_model_path}")
@@ -238,6 +202,19 @@ def ml_classifier():
     save_cache_to_disk()
 
     return jsonify(predictions)
+
+
+def clear_cache():
+    global cache
+    cache.clear()
+    print(f"{Fore.GREEN}[CLEAR]{Style.RESET_ALL} Caché borrado correctamente")
+
+    cache_file = 'cache.pkl'
+    if os.path.exists(cache_file):
+        os.remove(cache_file)
+        print(f"{Fore.GREEN}[DELETE]{Style.RESET_ALL} Archivo de caché eliminado de {cache_file}")
+
+    return jsonify({"message": "Caché borrado con éxito."}), 200
 
 
 if __name__ == '__main__':
